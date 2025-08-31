@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import Icon from '@/components/ui/icon';
 
 interface AnimeEpisode {
@@ -67,12 +70,78 @@ const animeList: AnimeEpisode[] = [
     time: '19:39',
     genre: 'Драма',
     rating: 4.6
+  },
+  {
+    id: '6',
+    title: 'Атака титанов',
+    poster: '/img/cddfe589-ca0c-46d4-a853-a95030b286e8.jpg',
+    episode: 87,
+    totalEpisodes: 87,
+    time: '18:15',
+    genre: 'Боевик',
+    rating: 4.9
+  },
+  {
+    id: '7',
+    title: 'Моя геройская академия',
+    poster: '/img/ae75b47a-aefd-4f68-a651-9c4cd895d666.jpg',
+    episode: 138,
+    totalEpisodes: 150,
+    time: '17:30',
+    genre: 'Боевик',
+    rating: 4.7
+  },
+  {
+    id: '8',
+    title: 'Наруто: Шиппуден',
+    poster: '/img/ea4748a9-8b3d-423e-885b-5dbedac0d9c2.jpg',
+    episode: 500,
+    totalEpisodes: 500,
+    time: '16:45',
+    genre: 'Приключения',
+    rating: 4.8
+  },
+  {
+    id: '9',
+    title: 'Клинок, рассекающий демонов',
+    poster: '/img/cddfe589-ca0c-46d4-a853-a95030b286e8.jpg',
+    episode: 44,
+    totalEpisodes: 44,
+    time: '15:20',
+    genre: 'Боевик',
+    rating: 4.9,
+    isNew: true
+  },
+  {
+    id: '10',
+    title: 'Твое имя',
+    poster: '/img/ae75b47a-aefd-4f68-a651-9c4cd895d666.jpg',
+    episode: 1,
+    totalEpisodes: 1,
+    time: '14:00',
+    genre: 'Романтика',
+    rating: 4.8
+  },
+  {
+    id: '11',
+    title: 'Унесенные призраками',
+    poster: '/img/ea4748a9-8b3d-423e-885b-5dbedac0d9c2.jpg',
+    episode: 1,
+    totalEpisodes: 1,
+    time: '13:30',
+    genre: 'Фантастика',
+    rating: 4.9
   }
 ];
+
+const genreList = ['Все', 'Боевик', 'Приключения', 'Фантастика', 'Романтика', 'Драма'];
 
 const Index = () => {
   const [selectedAnime, setSelectedAnime] = useState<AnimeEpisode | null>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedGenres, setSelectedGenres] = useState<string[]>(['Все']);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const handlePlayVideo = (anime: AnimeEpisode) => {
     setSelectedAnime(anime);
@@ -83,6 +152,61 @@ const Index = () => {
     setIsVideoPlaying(false);
     setSelectedAnime(null);
   };
+
+  const handleGenreToggle = (genre: string) => {
+    if (genre === 'Все') {
+      setSelectedGenres(['Все']);
+    } else {
+      setSelectedGenres(prev => {
+        const newGenres = prev.filter(g => g !== 'Все');
+        if (prev.includes(genre)) {
+          const filtered = newGenres.filter(g => g !== genre);
+          return filtered.length === 0 ? ['Все'] : filtered;
+        } else {
+          return [...newGenres, genre];
+        }
+      });
+    }
+  };
+
+  const filteredAnime = useMemo(() => {
+    let filtered = animeList;
+
+    // Поиск по названию
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(anime =>
+        anime.title.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Фильтр по жанрам
+    if (!selectedGenres.includes('Все')) {
+      filtered = filtered.filter(anime =>
+        selectedGenres.includes(anime.genre)
+      );
+    }
+
+    return filtered;
+  }, [searchQuery, selectedGenres]);
+
+  const genreStats = useMemo(() => {
+    const stats: { [key: string]: number } = {};
+    genreList.forEach(genre => {
+      if (genre === 'Все') {
+        stats[genre] = animeList.length;
+      } else {
+        stats[genre] = animeList.filter(anime => anime.genre === genre).length;
+      }
+    });
+    return stats;
+  }, []);
+
+  const searchSuggestions = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    return animeList
+      .filter(anime => anime.title.toLowerCase().includes(searchQuery.toLowerCase()))
+      .slice(0, 5);
+  }, [searchQuery]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20 dark">
@@ -103,9 +227,57 @@ const Index = () => {
               </nav>
             </div>
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="icon">
-                <Icon name="Search" size={20} />
-              </Button>
+              {/* Search */}
+              <div className="relative">
+                <div className="relative">
+                  <Icon 
+                    name="Search" 
+                    size={16} 
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" 
+                  />
+                  <Input
+                    type="text"
+                    placeholder="Поиск аниме..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => setIsSearchFocused(true)}
+                    onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+                    className="pl-10 pr-4 w-64 bg-background/50 backdrop-blur-sm border-border/50 focus:border-primary"
+                  />
+                </div>
+                
+                {/* Search Suggestions */}
+                {isSearchFocused && searchSuggestions.length > 0 && (
+                  <Card className="absolute top-full left-0 right-0 mt-1 z-50 animate-fade-in">
+                    <CardContent className="p-2">
+                      {searchSuggestions.map((anime) => (
+                        <div
+                          key={anime.id}
+                          className="flex items-center space-x-3 p-2 hover:bg-accent rounded-md cursor-pointer"
+                          onClick={() => {
+                            setSearchQuery(anime.title);
+                            setIsSearchFocused(false);
+                          }}
+                        >
+                          <img
+                            src={anime.poster}
+                            alt={anime.title}
+                            className="w-10 h-10 object-cover rounded"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{anime.title}</p>
+                            <p className="text-xs text-muted-foreground">{anime.genre}</p>
+                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            {anime.episode} сер.
+                          </Badge>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+              
               <Button variant="ghost" size="icon">
                 <Icon name="User" size={20} />
               </Button>
@@ -201,18 +373,97 @@ const Index = () => {
           </div>
         </section>
 
-        {/* New Episodes Section */}
+        {/* Filters Section */}
+        <section className="mb-8">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center space-x-4">
+              <h3 className="text-2xl font-bold text-foreground">Фильтры</h3>
+              <Badge variant="secondary" className="text-sm">
+                {filteredAnime.length} из {animeList.length}
+              </Badge>
+            </div>
+            
+            {/* Clear Filters */}
+            {(searchQuery || !selectedGenres.includes('Все')) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedGenres(['Все']);
+                }}
+              >
+                <Icon name="X" size={14} className="mr-2" />
+                Сбросить
+              </Button>
+            )}
+          </div>
+          
+          {/* Genre Filters */}
+          <div className="flex flex-wrap gap-2">
+            {genreList.map((genre) => {
+              const isSelected = selectedGenres.includes(genre);
+              const count = genreStats[genre] || 0;
+              
+              return (
+                <Button
+                  key={genre}
+                  variant={isSelected ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleGenreToggle(genre)}
+                  className={`transition-all duration-200 ${isSelected ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}
+                >
+                  {genre}
+                  <Badge 
+                    variant={isSelected ? "secondary" : "outline"} 
+                    className="ml-2 text-xs"
+                  >
+                    {count}
+                  </Badge>
+                </Button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Results Section */}
         <section>
           <div className="flex items-center justify-between mb-8">
-            <h3 className="text-3xl font-bold text-foreground">НОВЫЕ СЕРИИ АНИМЕ</h3>
+            <div className="flex items-center space-x-4">
+              <h3 className="text-3xl font-bold text-foreground">
+                {searchQuery ? `Результаты поиска "${searchQuery}"` : 'НОВЫЕ СЕРИИ АНИМЕ'}
+              </h3>
+            </div>
             <Button variant="outline" className="hidden md:inline-flex">
               Показать все
               <Icon name="ArrowRight" size={16} className="ml-2" />
             </Button>
           </div>
+          
+          {/* No Results */}
+          {filteredAnime.length === 0 && (
+            <div className="text-center py-12 animate-fade-in">
+              <Icon name="Search" size={64} className="mx-auto text-muted-foreground/50 mb-4" />
+              <h4 className="text-xl font-semibold text-foreground mb-2">
+                Ничего не найдено
+              </h4>
+              <p className="text-muted-foreground mb-4">
+                Попробуйте изменить параметры поиска или выберите другие жанры
+              </p>
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedGenres(['Все']);
+                }}
+              >
+                Сбросить фильтры
+              </Button>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {animeList.map((anime, index) => (
+            {filteredAnime.map((anime, index) => (
               <Card
                 key={anime.id}
                 className="group cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl animate-fade-in bg-card border-border/50"
